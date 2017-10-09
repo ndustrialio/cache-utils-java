@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -94,6 +95,7 @@ public class TimeScoreCache implements ITimeSeriesCache<String>
         return response.isEmpty() ? null : getValue(hour, response.iterator().next());
     }
 
+    @SuppressWarnings("unchecked")
     public Value<String> get(final String key, DateTime timestamp)
     {
         final long hour = getHour(timestamp);
@@ -118,6 +120,41 @@ public class TimeScoreCache implements ITimeSeriesCache<String>
 
 
         return response.isEmpty() ? null : getValue(hour, response.iterator().next());
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<Value<String>> get(DateTime timestamp, final String... keys)
+    {
+        final long hour = getHour(timestamp);
+
+        final long offset = timestamp.getMillis()-hour;
+
+        List<Object> data = (List<Object>)_client.execute((handle)->
+        {
+            Pipeline p = handle.pipelined();
+
+            for(String key : keys)
+            {
+                p.zrangeByScore(key+":"+hour, offset+"", offset+"", 0, 1);
+                if (_ttl != 0) p.expire(key+":"+hour, _ttl);
+
+            }
+            return p.syncAndReturnAll();
+
+        });
+
+        List<Value<String>> ret = new ArrayList<>();
+
+        for(int i = 0; i < data.size();)
+        {
+            Set<String> d = (Set<String>)data.get(i);
+
+            ret.add(d.isEmpty() ? null : getValue(hour, d.iterator().next()));
+
+            i+=2;
+        }
+
+        return ret;
     }
 
     public void put(final String key, DateTime timestamp, String value)

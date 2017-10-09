@@ -1,0 +1,6 @@
+services:
+  - name: redis
+    version: latest
+    ports:
+      - 6379
+

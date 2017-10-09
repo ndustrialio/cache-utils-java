@@ -3,6 +3,7 @@ package com.ndustrialio.cacheutils;
 import org.joda.time.DateTime;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by jmhunt on 3/31/17.
@@ -121,6 +122,38 @@ public class DataCache<T> implements ITimeSeriesCache<T>
         }
     }
 
+
+    @Override
+    public List<Value<T>> get(DateTime timestamp, String... keys)
+    {
+        List<Optional<CacheNode>> cacheNodes = Arrays.stream(keys)
+                .map(key -> Optional.ofNullable(_data.get(key))) // Look up in data map
+                .map(data -> Optional.ofNullable(data.map(d -> d.isEmpty() ? null : d).orElse(null))) // Handle case in which map is empty (treat as null)
+                .map(data ->  Optional.ofNullable(data.map(d->d.get(timestamp)).orElse(null))) // Extract CacheNode by timestamp
+                .collect(Collectors.toList()); // Collect to list
+
+
+        List<Value<T>> ret = new ArrayList<>();
+
+        // Update access time and return list.. couldn't find a way to do this in streams
+        for(int i = 0; i < keys.length; i++) {
+            String key = keys[i];
+            Optional<CacheNode> o = cacheNodes.get(i);
+
+            if (o.isPresent()) {
+
+                CacheNode node = o.get();
+
+                node.accessTime = updateTTL(node.accessTime, new TTLNode(timestamp, key));
+
+                ret.add(new Value<T>(timestamp, node.value));
+            } else{
+                ret.add(null);
+            }
+        }
+
+        return ret;
+    }
     /**
      * Updates the TTL map.  Removes the provided TTLNode, if
      * extant, and then inserts a new one at the current time

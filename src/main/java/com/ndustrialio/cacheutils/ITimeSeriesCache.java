@@ -3,36 +3,13 @@ package com.ndustrialio.cacheutils;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
 
+import java.util.List;
+
 /**
  * Created by jmhunt on 4/4/17.
  */
 public interface ITimeSeriesCache<T>
 {
-    class Value<T>
-    {
-        public DateTime timestamp;
-
-        public T value;
-
-        public Value(DateTime timestamp, T value)
-        {
-            this.timestamp = timestamp;
-            this.value = value;
-        }
-
-        @Override
-        public String toString()
-        {
-            JSONObject obj = new JSONObject();
-
-            obj.put("t", timestamp.getMillis());
-            obj.put("v", value);
-
-
-            return obj.toString();
-        }
-
-    }
 
     /**
      * Get a value at a timestamp, or null if none
@@ -41,6 +18,16 @@ public interface ITimeSeriesCache<T>
      * @return the Value, or null if none.
      */
      Value<T> get(String key, DateTime timestamp);
+
+    /**
+     * Get multiple values at a timestamp, or null if none
+     * Will always return a list equal to the length of the
+     * keys parameter
+     * @param timestamp timestamp to search for
+     * @param keys keys to search for
+     * @return List of values, null if none
+     */
+    List<Value<T>> get(DateTime timestamp, String... keys);
 
     /**
      * Put a value in the cachce
@@ -69,4 +56,5 @@ public interface ITimeSeriesCache<T>
      * @return
      */
     Value<T> getClosestBefore(String key, DateTime timestamp, boolean inclusive);
+
 }

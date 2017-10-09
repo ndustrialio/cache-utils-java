@@ -5,8 +5,11 @@ import org.joda.time.DateTime;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 
 public class TimeHashingCache implements ITimeSeriesCache<String>
@@ -109,6 +112,31 @@ public class TimeHashingCache implements ITimeSeriesCache<String>
 		return new Value<>(e.getKey(), e.getValue());
 	}
 
+
+	@SuppressWarnings("unchecked")
+	public List<Value<String>> get(DateTime timestamp, final String... keys)
+    {
+        final long hour = getHour(timestamp);
+
+        final long offset = timestamp.getMillis()-hour;
+
+        List<Object> values = (List<Object>)_client.execute((handle)-> {
+            Pipeline p = handle.pipelined();
+
+            for (String key: keys)
+            {
+                p.hget(key+":"+hour, offset+"");
+            }
+
+
+            return p.syncAndReturnAll();
+        });
+
+        return values.stream()
+				.map(Optional::ofNullable)
+				.map(value -> value.map(v ->new Value<>(timestamp, v.toString())).orElse(null))
+                .collect(Collectors.toList());
+    }
 
 
 	public Value<String> get(final String key, DateTime timestamp)
