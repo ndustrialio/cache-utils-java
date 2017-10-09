@@ -9,6 +9,7 @@ import java.util.List;
 /**
  * Created by jmhunt on 3/15/17.
  */
+@Deprecated
 public class TimeScoreValuesCache extends TimeScoreCache
 {
     public TimeScoreValuesCache(RedisClient client)
